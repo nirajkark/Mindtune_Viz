@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# Packaging / tooling
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Secrets
+.env
+.env.*
+
+# Large / generated artifacts (regenerate with scripts; use Releases or cloud for big blobs)
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.onnx
+
+# Raw session exports (often large; point teammates to a shared drive or sample data)
+sessions*/
+
+# Optional: uncomment if CSV exports should stay local only
+# *.csv

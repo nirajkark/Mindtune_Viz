@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mindtune-stress-model"
+version = "0.1.0"
+description = "Real-time Mindtune band-feature classifier (stressed/calm/neutral)."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "pandas",
+  "scikit-learn",
+  "joblib",
+  "xgboost",
+  "lightgbm",
+]
+
+[tool.setuptools]
+packages = ["mindtune_stress_model"]
+
