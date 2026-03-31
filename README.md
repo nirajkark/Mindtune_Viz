@@ -1,90 +1,68 @@
+# MindTune: EEG Feature Engineering & Transformation Pipeline
 
-
-
-# MindTune: Mathematical Data Transformation Pipeline
-
-This document defines the precise mathematical transformations required to convert raw electrical signals from your hardware into the feature vector used by the **Extra Trees** classification model.
+[cite_start]This README document outlines the mathematical and neurological framework used to transform raw EEG signals into a high-accuracy (91%+) feature vector for the **Extra Trees** classification model[cite: 2, 152].
 
 ---
 
-## Stage 1: Signal Normalization (Raw to Percentages)
-
-Raw EEG values represent absolute power, which varies significantly due to physical factors (e.g., sensor contact). We normalize these to relative power to ensure the model focuses on the **spectral distribution**.
-
-### 1.1 Total Power Calculation
-First, we sum the 8 primary frequency bands:
-$$\text{Total Power} (P_{total}) = \sum_{i=1}^{8} \text{Band}_i$$
-Where $i \in \{\delta, \theta, \alpha_{low}, \alpha_{high}, \beta_{low}, \beta_{high}, \gamma_{low}, \gamma_{mid}\}$.
-
-### 1.2 Individual Band Percentages
-Each band is converted to a percentage of the total spectral energy:
-$$\text{Band}_i \text{ (pct)} = \frac{\text{Band}_i}{P_{total} + \epsilon}$$
-*(Note: $\epsilon = 1e-6$ is added to the denominator to prevent division by zero if the sensor is disconnected.)*
-
-
+## 🧠 The Core Problem
+[cite_start]Raw EEG data is inherently "noisy" and cannot be used for machine learning without three critical transformations[cite: 5, 6]:
+1.  [cite_start]**Scale Variance**: Raw values differ based on skin conductance and hardware, making users "incomparable"[cite: 7, 13].
+2.  [cite_start]**Lack of Context**: Models require "domain knowledge" to understand known neural stress markers[cite: 7, 36].
+3.  [cite_start]**Temporal Noise**: Single-second snapshots are too volatile; stress is a state that builds over time[cite: 7, 74].
 
 ---
 
-## Stage 2: Feature Engineering (Cognitive Ratios)
+## 🛠 Layer 1: Band Power Normalization
+[cite_start]To solve the inter-subject scale problem, we convert absolute power into **scale-invariant proportions**[cite: 31, 137].
 
-We derive high-level cognitive indicators by calculating ratios between specific bands. These features provide "domain knowledge" to the model.
+### The Math
+[cite_start]For each of the 8 primary bands, we calculate its percentage of the total spectral energy[cite: 22, 24]:
+$$\text{Band}_i \text{ (pct)} = \frac{\text{Band}_i}{\sum_{j=1}^{8} \text{Band}_j + \epsilon}$$
+[cite_start]*(An epsilon $\epsilon = 1e-6$ is added to prevent division by zero[cite: 38].)*
 
-### 2.1 Theta-Beta Ratio (TBR)
-Used widely to detect focus and attention levels:
-$$\text{TBR} = \frac{\theta_{pct}}{\beta_{low\_pct} + \beta_{high\_pct} + \epsilon}$$
-
-### 2.2 Slow-Fast Ratio (SFR)
-A measure of overall brain arousal (Higher values = Relaxation/Drowsiness; Lower values = High Alertness):
-$$\text{SFR} = \frac{\delta_{pct} + \theta_{pct}}{\beta_{low\_pct} + \beta_{high\_pct} + \gamma_{low\_pct} + \gamma_{mid\_pct} + \epsilon}$$
-
-### 2.3 Alpha-Beta Ratio (ABR)
-Used to distinguish between "Calm Focus" (Alpha) and "Active Stress" (Beta):
-$$\text{ABR} = \frac{\alpha_{low\_pct} + \alpha_{high\_pct}}{\beta_{low\_pct} + \beta_{high\_pct} + \epsilon}$$
-
----
-
-## Stage 3: Temporal Smoothing (Rolling Statistics)
-
-Because EEG is highly volatile, we use a rolling window of size $N=5$ (representing approximately 5 seconds of data) to capture stable trends.
-
-### 3.1 Rolling Mean ($\mu_{rolling}$)
-$$\mu_{rolling} = \frac{1}{N} \sum_{k=1}^{N} x_k$$
-This removes momentary "spike" noise (like eye blinks).
-
-### 3.2 Rolling Standard Deviation ($\sigma_{rolling}$)
-$$\sigma_{rolling} = \sqrt{\frac{1}{N} \sum_{k=1}^{N} (x_k - \mu_{rolling})^2}$$
-This measures **Signal Volatility**. Stressed states often show higher volatility in specific bands compared to calm states.
-
-
+### [cite_start]Frequency Band Mapping [cite: 12]
+| Band | Range | Brain Region | Mental State | Stress Signal |
+| :--- | :--- | :--- | :--- | :--- |
+| **Delta ($\delta$)** | 0.5–4 Hz | Occipital | Deep sleep | ↓ when stressed |
+| **Theta ($\theta$)** | 4–8 Hz | Temporal/Frontal | Meditative | $\theta/\beta \uparrow$ = stressed |
+| **Alpha ($\alpha$)** | 8–12 Hz | Parietal | Relaxed | ↓ during stress |
+| **Beta ($\beta$)** | 12–30 Hz | Frontal | Focused/Alert | $\uparrow$ during stress |
+| **Gamma ($\gamma$)** | 30–40+ Hz | Occipital | High Load | $\uparrow$ under stress |
 
 ---
 
-## Stage 4: Feature Scaling (Standardization)
+## 🧪 Layer 2: Engineered Cognitive Ratios
+[cite_start]We "inject" 50+ years of neuroscience research by pre-computing clinical stress biomarkers[cite: 35, 139].
 
-Before entering the model, all features must be on the same scale. We use **Z-Score Standardization**.
-
-For every feature $x$:
-$$z = \frac{x - \mu_{train}}{\sigma_{train}}$$
-Where $\mu_{train}$ and $\sigma_{train}$ are the mean and standard deviation of that specific feature calculated during the training phase.
+* [cite_start]**Theta-Beta Ratio (TBR)**: Measures cortical arousal[cite: 41, 42].
+    * [cite_start]*High Ratio*: Calm/Drowsy[cite: 47].
+    * [cite_start]*Low Ratio*: Anxious/Aroused (Stress Indicator)[cite: 48].
+* [cite_start]**Alpha-Beta Ratio (ABR)**: Captures the balance between idling and active cognition[cite: 49, 52].
+    * [cite_start]*High Ratio*: Relaxed/Resting[cite: 56].
+    * [cite_start]*Low Ratio*: Aroused/Stressed[cite: 57].
+* **Slow-Fast Ratio (SFR)**: $(\delta + \theta) / (\beta + \gamma)$. [cite_start]A broad measure of cognitive load[cite: 60, 63].
 
 ---
 
-## Stage 5: Prediction Pipeline Flow
-
-The final pipeline follows this logical sequence in your application:
-
-1.  **Input**: Receive 11 raw integers (`delta` through `mid_gamma` + `attention`, `meditation`, `quality`).
-2.  **Transform**: Apply **Stage 1** math to get 8 percentages.
-3.  **Buffer**: Push percentages into a **FIFO Queue** (length 5).
-4.  **Feature Gen**: Calculate **Stage 2** (Ratios) and **Stage 3** (Mean/Std of the queue).
-5.  **Scale**: Apply **Stage 4** using your saved `scaler.pkl`.
-6.  **Predict**: Pass the vector to `model.predict()`.
+## ⏱ Layer 3: Temporal Rolling Statistics
+[cite_start]To remove "snapshot noise," we use a **FIFO Buffer (deque maxlen=5)** to capture the last 5 seconds of brain activity[cite: 73, 77].
 
 
 
-### Why this benefits the prediction?
-* **Math vs. Raw**: By using $\text{Band}_i \text{ (pct)}$, we eliminate $80\%$ of sensor noise.
-* **Ratios**: By using $\text{TBR}$, we give the model a shortcut to understand "Focus."
-* **Rolling Stats**: By using $\mu_{rolling}$, we achieve a **smooth state transition** (e.g., you don't jump from "Calm" to "Stressed" because of a single cough).
+1.  **Rolling Mean ($\mu$):** Captures **Trend**. [cite_start]Tells the model if a state (like Beta) is rising or falling over time[cite: 98, 99].
+2.  **Rolling Std Dev ($\sigma$):** Captures **Stability**. [cite_start]High volatility (high std) is a strong discriminator for unstable, stressed brain states[cite: 107, 108].
 
-This mathematical rigour is what allowed the **Extra Trees** model to reach over **$91\%$** accuracy.
+---
+
+## 📊 Final Feature Vector (30+ Total)
+[cite_start]The pipeline outputs a comprehensive vector every second[cite: 135]:
+
+| Group | Features | Why? |
+| :--- | :--- | :--- |
+| **Band Pct** | 8 (Delta through Gamma) | [cite_start]Scale-invariant proportions[cite: 135]. |
+| **Ratios** | 3 (TBR, ABR, SFR) | [cite_start]Neuroscience prior knowledge[cite: 135]. |
+| **Rolling Mean** | 8 (per band) | [cite_start]Temporal trend direction[cite: 135]. |
+| **Rolling Std** | 8 (per band) | [cite_start]Brain state volatility[cite: 135]. |
+| **Base Metrics** | 3 (Attention, Meditation, Quality) | [cite_start]Proprietary hardware scores[cite: 135]. |
+
+> [cite_start]**Note**: The system requires a 5-second "warm-up" period to fully populate the buffer before valid predictions can begin[cite: 132, 133].
